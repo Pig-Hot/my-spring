@@ -1,0 +1,71 @@
+SpringIOC
+核心接口:BeanFactory(IOC容器定义接口),ApplicatContext(扩展了BeanFactory),BeanDefinition(Bean的基本信息,也是容器实现依赖反转功能的核心数据结构)
+大致流程:1. ApplicationContext ctx = new FileSystemXmlApplicationContext("beans.xml");
+			FileSystemXmlApplicationContext传递的是一个地址字符串,在FileSystemXmlApplicationContext的构造器中主要做两件事情,设置配置文件和刷新容器
+		 2. FileSystemXmlApplicationContext构造器中的refresh是调用的AbstractApplicationContext.refresh()实现
+		 	refresh()主要做了BeanFactory的创建,注册事件,创建Bean的实例对象,触发被监听的事件
+		 创建BeanFactory:
+		 		就是obtainFreshBeanFactory()方法返回一个ConfigurableListableBeanFactory,该方法实际调用的是一个模板方法refreshBeanFactory
+			是由AbstractRefreshableApplicationContext实现的可以看到BeanFactory的创建过程，首先判断是否存在了BeanFactory，如果有则销毁重新创建，调用createBeanFactory 方法，该方法中就是像注释写的：创建了DefaultListableBeanFactory，也既是说，DefaultListableBeanFactory就是BeanFactory的默认实现。然后我们看到一个很感兴趣的方法，就是loadBeanDefinitions(beanFactory)，看名字是加载 Definitions，Definition是核心之一，代表着IOC中的基本数据结构。该方法也是个抽象方法，默认实现是AbstractXmlApplicationContext，AbstractXmlApplicationContext，首先创建一个XmlBeanDefinitionReader用于读取XML中配置，设置了环境，资源加载器，最后初始化，加载。可以说，该方法将加载，解析Bean的定义，也就是把用户定义的数据结构转化为 IOC容器中的特定数据结构。而我们关心的则是最后一行的loadBeanDefinitions方法，该方法主要逻辑是根据输入流加载Document文档对象，然后根据得到的文档对象注册到容器，因此我们看看倒是是如何注册到容器的，该方法首先创建一个BeanDefinitionDocumentReader，用于读取BeanDefinition，该对象会调用 registerBeanDefinitions方法，该方法最后从文档对象总获取根元素，最后调用DefaultBeanDefinitionDocumentReader.doRegisterBeanDefinitions(root)进行注册。该方法最核心的逻辑就是调用 parseBeanDefinitions(root, this.delegate)，parseBeanDefinitions实际上是解析XML文件然后调用parseDefaultElement(ele, delegate):首先创建一个 BeanDefinitionHolder，该方法会调用BeanDefinitionReaderUtils.registerBeanDefinition方法，最后执行容器通知事件,registerBeanDefinition首先从bean的持有者那里获取了beanName，然后调用registry.registerBeanDefinition(),将bena的名字和BeanDefinition注册,该方法可以说是注册bean的最后一步，将beanName和 beanDefinition 放进一个 ConcurrentHashMap,那么这个beanDefinition是什么时候创建的呢，就是在 DefaultBeanDefinitionDocumentReader.processBeanDefinition(Element ele, BeanDefinitionParserDelegatedelegate)方法中，在这里创建了BeanDefinitionHolder，而该实例中解析Bean并将Bean保存在该对象中。所以称为持有者。该实例会调用 parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean)方法，该方法用于解析XML文件并创建一个 BeanDefinitionHolder 返回，该方法会调用 parseBeanDefinitionElement(ele, beanName, containingBean) 方法,该方法从XML元素中取出 class 元素，然后拿着className调用 createBeanDefinition(className, parent) 方法，该方法核心是调用 BeanDefinitionReaderUtils.createBeanDefinition 方法,该方法从XML元素中取出 class 元素，然后拿着className调用 createBeanDefinition(className, parent) 方法，该方法核心是调用 BeanDefinitionReaderUtils.createBeanDefinition 方法,该方法从XML元素中取出 class 元素，然后拿着className调用 createBeanDefinition(className, parent) 方法，该方法核心是调用 BeanDefinitionReaderUtils.createBeanDefinition 方法
+		创建依赖关系:
+				在 finishBeanFactoryInitialization(beanFactory) 方法中。该方法中重要的一步是 ： beanFactory.preInstantiateSingletons(),
+			该方法首先循环所有的BeanNames，并且调用getBean方法，该方法实际上就是创建bean并递归构建依赖关系。该方法会调用 doGetBean(name, null, null, false)该方法首先会获取依赖关系，拿着依赖的BeanName 递归调用 getBean方法，直到调用 getSingleton 方法返回依赖bean，而 getSingleton 方法的参数是 createBean 返回的实例，该方法内部调用 AbstractAutowireCapableBeanFactory.doCreateBean 方法,该方法很长，我们只关注二行代码：
+			1. instanceWrapper = createBeanInstance(beanName, mbd, args) 创建实例。
+			2. populateBean(beanName, mbd, instanceWrapper) ， 该方法用于填充Bean，该方法可以就是说就是发生依赖注入的地方。
+
+总结:
+		Spring 的 Bean 其实就是 BeanDefinition, 在 Bean 的创建和依赖注入的过程中, 需要根据 BeanDefinition 的信息来递归的完成依赖注入, 从我们分析的代码可以看到,这些递归都是以 getBean() 为入口的, 一个递归是在上下文体系中查找需要的 Bean 和创建 Bean 的递归调用, 另一个 Bean 实在依赖注入时,通过递归调用容器的 getBean 方法, 得到当前的依赖 Bean, 同时也触发对依赖 Bean 的创建和注入. 在对 Bean 的属性尽心依赖注入时, 解析的过程也是一个递归的过程, 这样, 根据依赖关系, 一层一层的完成 Bean 的创建和注入, 知道最后完成当前 Bean 的创建, 有了这个顶层 Bean 的创建和对他的属性依赖注入的完成, 意味着当前 Bean 相关的整个依赖链的注入也完成了.
+
+		总结一下 IOC 的初始化过程吧:
+		1. 资源(Resource)定位;
+		2. BeanDefinition 的载入和 BeanFactory 的构造.
+		3. 想 IOC 容器(BeanFactory)注册 BeanDefinition.
+		4. 根据 lazy-init 属性初始化 Bean 实例和依赖注入.
+
+Bean的生命周期:上面提到Bean是通过getBean()创建 -> set属性注入 -> BeanNameAware -> BeanFactoryAware -> ApplicationContextAware
+ -> BeforeBeanPostPrecesser -> initializingBean -> 自定义inti方法 -> AfterBeanPostPrecesser -> 使用 -> DisposableBean -> 自定义销毁方法
+	ApplicationContext context = new ClassPathXmlApplicationContext(path);
+    0.新建ApplicationContext容器对象（并没有初始化）；
+    1.ResourceLoader加载并解析资源文件 ———> 获得Resource对象；
+    2.BeanDefinitionReader读取Resource对象，将其读到的bean元素数据封装到BeanDefinition组件中；
+    3.BeanDefinitionRegister将所有的BeanDefinition注册到BeanFactory中（BeanDefinition是容器内部Bean的基本数据结构，BeanFactory
+        维持着一个BeanDefinitionMap
+    4.容器初始化开始，容器初始化工作由AbstractApplicationContext提供的refresh()方法完成
+------------------
+	1.Bean自身方法：init-method/destroy-method，通过为配置文件bean定义中添加相应属性指定相应执行方法。
+	2.Bean级生命周期接口：BeanNameAware、BeanFactoryAware、InitializingBean和DiposableBean这些接口的方法。每个Bean选择实现，可选
+	    择各自的个性化操作。
+	3.容器级生命周期接口方法：这个包括了InstantiationAwareBeanPostProcessor 和 BeanPostProcessor这两个接口实现（前者继承自后者），
+	    一般称它们的实现类为"后处理器"（其实我觉得这个名称对新手有误导的意思），这些接口是每个bean实例化或初始化时候都会调用。
+	4.工厂后处理器接口方法：这些方法也是容器级别的，但它们是在上下文装置配置文件之后调用，例如BeanFactoryPostProcessor、
+	    CustomAutowireConfigurer等
+-----------------
+	1.postProcessBeanFactory(ConfigurableListableBeanFactory c) 这个方法和Bean生命周期没什么关系，是ApplicationContext初始化一部分,实现BeanFactoryPostProcessor接口
+	2.postProcessBeforeInstantiation(Class<？>c,String beanName)
+	所有Bean对象实例化之前执行,实现InstantiationAwareBeanPostProcessor接口
+	3.bean实例化，调用bean类构造函数
+	4.postProcessAfterInstantiation(Object bean,String beanName)
+	bean类实例化之后，初始化之前调用,实现InstantiationAwareBeanPostProcessor接口，返回值为false则无法注入属性
+	5.postProcessPropertyValue
+	属性注入之前调用，实现InstantiationAwareBeanPostProcessor接口
+	6.setBeanName(String beanName)
+	属性注入后调用，该方法作用是让bean类知道自己所在的Bean的name或id属性，实现BeanNameAware接口
+	7.setBeanFactory(BeanFactory factory)
+	setBeanName后调用，该方法作用是让bean类知道自己所在的BeanFactory的属性（传入bean所在BeanFactory类型参数），实现BeanFactoryAware
+	8.setApplicationContext(ApplicationContext arg0)
+	注入ApplicationContext，实现ApplicationContextAware
+	9.postProcessBeforeInitialization(Object bean,String beanName)
+	BeanPostProcessor作用是对bean实例化、初始化做些预处理操作，实现BeanPostProcessor接口
+	10.postProcessBeforeInitialization(Object bean,Strign beanName)
+	实现BeanPostProcessor接口
+	11.afterPropertiesSet()
+	实现：bean类实现InitializingBean接口，重写该方法。初始化工作，但实现该接口这种方法和Spring耦合，不推荐（这一点DisposableBean一样）。
+	12.postProcessAfterInitialization(Object bean,Strign beanName)
+	实现BeanPostProcessor接口
+	13.postProcessAfterInitialization(Object bean,Strign beanName)
+	实现InstantiationAwareBeanPostProcessor接口
+	14.程序执行，bean工作
+	15.destroy()
+	bean销毁前执行，实现：bean类实现DisposableBean接口
+	17.xml_destroy()
+	实现spring bean配置文件中配置bean属性destroy-method=”xml_destroy”

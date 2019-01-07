@@ -1,0 +1,25 @@
+1. FactroyBean 我们熟悉的AOP基础bean
+    该接口定义了3个方法，获取bean实例，获取bean类型，是否是单例
+    重写getObject方法，getBean会拿到getObject方法的返回值
+
+2. BeanPostProcess 在每个bena初始化成前后做操作。
+    在 IOC 初始化的时候，会调用的该接口的后置处理方法，postProcessBeforeInitialization，postProcessAfterInitialization
+    一个是前置方法，一个是后置方法，注解方式的AOP的实现就是在 postProcessAfterInitialization 方法中实现的
+
+3. InstantiationAwareBeanPostProcessor 在Bean实例化前后做一些操作。
+    注解配置的AOP是间接实现 BeanPostProcess 接口的，而 InstantiationAwareBeanPostProcessor 就是继承该接口的
+    需要实现 5 个方法，其中2个方法是 BeanPostProcess 接口定义的方法：在bean初始化的前后执行，而 InstantiationAwareBeanPostProcessor
+    则新增了 3 个方法，分别是 postProcessBeforeInstantiation （实例化之前），postProcessAfterInstantiation （实例化之后），postPr
+    ocessPropertyValues （在处理Bean属性之前），开发者可以在这三个方法中添加自定义逻辑
+
+4. BeanNameAware、ApplicationContextAware 和 BeanFactoryAware 针对bean工厂，可以获取上下文，可以获取当前bena的id。
+    这三个接口都继承自 Aware 接口，并分别定义了自己的接口定义方法。实现这些接口就能得到Spring的Bean 工厂。从而调用getBean方法获取Bean。
+    很多项目中都使用此接口做了Spring的工具类
+
+5. BeanFactoryPostProcessor Spring允许在Bean创建之前，读取Bean的元属性，并根据自己的需求对元属性进行改变，比如将Bean的scope从singleton改变为prototype。
+    只定义了一个方法，该方法注释：在它的标准初始化之后修改应用程序上下文的内部bean工厂。所有的bean定义都已经加载了，但是还没有实例化bean。
+    这允许覆盖或添加属性，甚至是对初始化bean的属性。参数是什么呢？应用程序上下文所使用的bean工厂。也就是说，我们可以获取某个Bean的定义，
+    然后修改该Bean的定义
+
+6. InitialingBean 在属性设置完毕后做一些自定义操作 DisposableBean 在关闭容器前做一些操作。
+
