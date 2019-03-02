@@ -1,0 +1,39 @@
+Spring事务机制主要包括声明式事务和编程式事务
+事务的特性:ACID(原子性，一致性，隔离性，持久性)
+Spring在TransactionDefinition接口中定义这些属性,以供PlatfromTransactionManager使用, PlatfromTransactionManager是spring事务管理的核心接口
+TransactionDefinition:返回事务传播行为，返回事务隔离级别，返回事务必须多少秒内完成，事务是否只读
+TransactionDefinition接口中定义五个隔离级别:
+    1.ISOLATION_DEFAULT:这是一个PlatfromTransactionManager默认的隔离级别，使用数据库默认的事务隔离级别.另外四个与JDBC的隔离级别相对应
+    2.ISOLATION_READ_UNCOMMITTED:这是事务最低的隔离级别，它充许别外一个事务可以看到这个事务未提交的数据。这种隔离级别会产生脏读，不可重复读和幻像读
+    3.ISOLATION_READ_COMMITTED:保证一个事务修改的数据提交后才能被另外一个事务读取。另外一个事务不能读取该事务未提交的数据。这种事务隔
+                               离级别可以避免脏读出现，但是可能会出现不可重复读和幻像读
+    4.ISOLATION_REPEATABLE_READ:这种事务隔离级别可以防止脏读，不可重复读。但是可能出现幻像读。它除了保证一个事务不能读取另一个事务未
+                               提交的数据外，还保证了避免下面的情况产生(不可重复读)。
+    5.ISOLATION_SERIALIZABLE:这是花费最高代价但是最可靠的事务隔离级别。事务被处理为顺序执行。除了防止脏读，不可重复读外，还避免了幻像读
+
+1： Dirty reads（脏读）。也就是说，比如事务A的未提交（还依然缓存）的数据被事务B读走，如果事务A失败回滚，会导致事务B所读取的的数据是错误的。
+2： non-repeatable reads（数据不可重复读）。比如事务A中两处读取数据-total-的值。在第一读的时候，total是100，然后事务B就把total的数据改
+        成 200，事务A再读一次，结果就发现，total竟然就变成200了，造成事务A数据混乱。
+3： phantom reads（幻象读数据），这个和non-repeatable reads相似，也是同一个事务中多次读不一致的问题。但是non-repeatable reads的不
+        一致是因为他所要取的数据集被改变了（比如total的数据），但是phantom reads所要读的数据的不一致却不是他所要读的数据集改变，而是他的条件数据
+        集改变。比如Select account.id where account.name="ppgogo*",第一次读去了6个符合条件的id，第二次读取的时候，由于事务b把一个帐号的名字
+        由"dd"改成"ppgogo1"，结果取出来了7个数据
+
+事务传播行为:
+    1.PROPAGATION_REQUIRED :如果存在一个事务，则支持当前事务。如果没有事务则开启一个新的事务
+    2.PROPAGATION_SUPPORTS :如果存在一个事务，支持当前事务。如果没有事务，则非事务的执行。但是对于事务同步的事务管理器，PROPAGATION_SUPPORTS与不使用事务有少许不同
+    3.PROPAGATION_MANDATORY :如果已经存在一个事务，支持当前事务。如果没有一个活动的事务，则抛出异常
+    4.PROPAGATION_REQUIRES_NEW :总是开启一个新的事务。如果一个事务已经存在，则将这个存在的事务挂起
+    ......
+
+spring的@Transactional注解详细用法
+属性	类型	描述
+value	String	可选的限定描述符，指定使用的事务管理器
+propagation	enum: Propagation	可选的事务传播行为设置
+isolation	enum: Isolation	可选的事务隔离级别设置
+readOnly	boolean	读写或只读事务，默认读写
+timeout	int (in seconds granularity)	事务超时时间设置
+rollbackFor	Class对象数组，必须继承自Throwable	导致事务回滚的异常类数组
+rollbackForClassName	类名数组，必须继承自Throwable	导致事务回滚的异常类名字数组
+noRollbackFor	Class对象数组，必须继承自Throwable	不会导致事务回滚的异常类数组
+noRollbackForClassName	类名数组，必须继承自Throwable	不会导致事务回滚的异常类名字数组
