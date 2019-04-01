@@ -44,7 +44,7 @@ SpringIOC
 		总结一下 IOC 的初始化过程吧:
 		1. 资源(Resource)定位;
 		2. BeanDefinition 的载入和 BeanFactory 的构造.
-		3. 想 IOC 容器(BeanFactory)注册 BeanDefinition.
+		3. 向 IOC 容器(BeanFactory)注册 BeanDefinition.
 		4. 根据 lazy-init 属性初始化 Bean 实例和依赖注入.
 
 Bean的生命周期:上面提到Bean是通过getBean()创建 -> set属性注入 -> BeanNameAware -> BeanFactoryAware -> ApplicationContextAware

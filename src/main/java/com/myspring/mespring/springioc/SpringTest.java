@@ -8,9 +8,12 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
  */
 public class SpringTest {
     public static void main(String[] args){
-        ApplicationContext context = new ClassPathXmlApplicationContext("appcontext-*.xml");
-        HelloWorld obj = (HelloWorld)context.getBean("helloWorld");
-        System.out.println("15.Bean working, message = " + obj.getMessage());
+        ApplicationContext context = new MyClassPathXmlApplicationContext("appcontext-*.xml");
+        HelloWorld helloWorld = (HelloWorld) context.getBean("helloWorld");
+        HelloWorld helloWorld2 = (HelloWorld) context.getBean("helloWorld");
+        System.out.println(helloWorld.equals(helloWorld2));
+//        HelloWorld obj = (HelloWorld)context.getBean("helloWorld");
+//        System.out.println("15.Bean working, message = " + obj.getMessage());
         //((ClassPathXmlApplicationContext)context).refresh();
         ((ClassPathXmlApplicationContext)context).close();
     }
